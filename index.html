@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>NIFTY Options Flow</title>
+<style>
+body{font-family:Arial;background:#111;color:#eee;text-align:center}
+table{border-collapse:collapse;margin:auto;margin-top:20px}
+td,th{border:1px solid #444;padding:8px}
+.signal{font-size:28px;margin-top:20px}
+</style>
+</head>
+
+<body>
+
+<h2>NIFTY OPTIONS FLOW DASHBOARD</h2>
+<h3 id="spot"></h3>
+
+<table id="table">
+<tr>
+<th>Strike</th>
+<th>CE Price</th>
+<th>CE Vol</th>
+<th>CE OI</th>
+<th>PE Price</th>
+<th>PE Vol</th>
+<th>PE OI</th>
+</tr>
+</table>
+
+<div class="signal" id="signal"></div>
+
+<script>
+
+async function loadData(){
+
+const res = await fetch(
+"https://cdn.jsdelivr.net/gh/nnn-repo/nse-option-chain-proxy/nifty"
+)
+
+const data = await res.json()
+
+const spot=data.spot
+document.getElementById("spot").innerHTML="NIFTY: "+spot
+
+let atm=Math.round(spot/50)*50
+let strikes=[atm-50,atm,atm+50]
+
+let rows=""
+let ceFlow=0
+let peFlow=0
+
+data.chain.forEach(d=>{
+
+if(strikes.includes(d.strike)){
+
+ceFlow+=d.ce_vol+d.ce_oi
+peFlow+=d.pe_vol+d.pe_oi
+
+rows+=`
+<tr>
+<td>${d.strike}</td>
+<td>${d.ce_price}</td>
+<td>${d.ce_vol}</td>
+<td>${d.ce_oi}</td>
+<td>${d.pe_price}</td>
+<td>${d.pe_vol}</td>
+<td>${d.pe_oi}</td>
+</tr>
+`
+}
+})
+
+document.getElementById("table").innerHTML=
+document.getElementById("table").rows[0].outerHTML + rows
+
+let signal="WAIT"
+
+if(ceFlow>peFlow*1.15) signal="BUY CALL"
+if(peFlow>ceFlow*1.15) signal="BUY PUT"
+
+document.getElementById("signal").innerHTML="SIGNAL: "+signal
+
+}
+
+loadData()
+
+setInterval(loadData,5000)
+
+</script>
+
+</body>
+</html>
