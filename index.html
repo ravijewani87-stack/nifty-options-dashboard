@@ -2,29 +2,54 @@
 <html>
 <head>
 <title>NIFTY Options Flow</title>
+
 <style>
-body{font-family:Arial;background:#111;color:#eee;text-align:center}
-table{border-collapse:collapse;margin:auto;margin-top:20px}
-td,th{border:1px solid #444;padding:8px}
-.signal{font-size:28px;margin-top:20px}
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+}
+
+table{
+border-collapse:collapse;
+margin:auto;
+margin-top:20px;
+}
+
+td,th{
+border:1px solid #334155;
+padding:10px;
+}
+
+.signal{
+font-size:30px;
+margin-top:20px;
+font-weight:bold;
+}
+
 </style>
 </head>
 
 <body>
 
-<h2>NIFTY OPTIONS FLOW DASHBOARD</h2>
-<h3 id="spot">Loading...</h3>
+<h1>NIFTY OPTIONS FLOW DASHBOARD</h1>
+
+<h2 id="spot">Loading NIFTY...</h2>
 
 <table id="table">
+
 <tr>
 <th>Strike</th>
 <th>CE Price</th>
-<th>CE Vol</th>
+<th>CE Volume</th>
 <th>CE OI</th>
 <th>PE Price</th>
-<th>PE Vol</th>
+<th>PE Volume</th>
 <th>PE OI</th>
 </tr>
+
 </table>
 
 <div class="signal" id="signal"></div>
@@ -33,41 +58,59 @@ td,th{border:1px solid #444;padding:8px}
 
 async function loadData(){
 
+try{
+
 const res = await fetch(
-"https://cdn.jsdelivr.net/gh/nnn-repo/nse-option-chain-proxy/nifty"
+"https://api.allorigins.win/raw?url=https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
 )
 
 const data = await res.json()
 
-const spot=data.spot
+const spot=data.records.underlyingValue
+
 document.getElementById("spot").innerHTML="NIFTY: "+spot
 
 let atm=Math.round(spot/50)*50
+
 let strikes=[atm-50,atm,atm+50]
 
 let rows=""
+
 let ceFlow=0
 let peFlow=0
 
-data.chain.forEach(d=>{
+data.records.data.forEach(d=>{
 
-if(strikes.includes(d.strike)){
+if(strikes.includes(d.strikePrice)){
 
-ceFlow+=d.ce_vol+d.ce_oi
-peFlow+=d.pe_vol+d.pe_oi
+let ce=d.CE||{}
+let pe=d.PE||{}
+
+let ce_price=ce.lastPrice||0
+let ce_vol=ce.totalTradedVolume||0
+let ce_oi=ce.openInterest||0
+
+let pe_price=pe.lastPrice||0
+let pe_vol=pe.totalTradedVolume||0
+let pe_oi=pe.openInterest||0
+
+ceFlow+=ce_vol+ce_oi
+peFlow+=pe_vol+pe_oi
 
 rows+=`
 <tr>
-<td>${d.strike}</td>
-<td>${d.ce_price}</td>
-<td>${d.ce_vol}</td>
-<td>${d.ce_oi}</td>
-<td>${d.pe_price}</td>
-<td>${d.pe_vol}</td>
-<td>${d.pe_oi}</td>
+<td>${d.strikePrice}</td>
+<td>${ce_price}</td>
+<td>${ce_vol}</td>
+<td>${ce_oi}</td>
+<td>${pe_price}</td>
+<td>${pe_vol}</td>
+<td>${pe_oi}</td>
 </tr>
 `
+
 }
+
 })
 
 document.getElementById("table").innerHTML=
@@ -75,10 +118,21 @@ document.getElementById("table").rows[0].outerHTML + rows
 
 let signal="WAIT"
 
-if(ceFlow>peFlow*1.15) signal="BUY CALL"
-if(peFlow>ceFlow*1.15) signal="BUY PUT"
+if(ceFlow>peFlow*1.2)
+signal="BUY CALL"
+
+if(peFlow>ceFlow*1.2)
+signal="BUY PUT"
 
 document.getElementById("signal").innerHTML="SIGNAL: "+signal
+
+}
+
+catch(e){
+
+document.getElementById("spot").innerHTML="Loading error — retrying..."
+
+}
 
 }
 
